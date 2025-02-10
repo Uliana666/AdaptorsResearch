@@ -37,21 +37,27 @@ def Whitening(X, eps):
     return np.linalg.cholesky(X_mod)
 
 
-def AuthorFindWeightNorm(W, X, r, eps):
-    S = Whitening(X, eps)
+def AuthorFindWeightNorm(W, X, r):
+    S = Whitening(X, 1e-2)
     return Globals.compress_matrix_full(W @ S, r) @ np.linalg.inv(S)
 
 
 
-def CompressSpecial(position, X, mask, lays, compressor):
+def CompressSpecial(position, X, mask, lays, compressor, inputs):
     handles = [{} for _ in range(lays)]
     W_new = [{} for _ in range(lays)]
 
     def calculate(lay, name, W, r):
         def hook(model, input):
             X = input[0][0].clone().cpu().detach().numpy().T
-            W_ = compressor(W, X, r)
-            W_new[lay][name] = W_
+            # W_ = compressor(W.copy(), X.copy(), r)
+            W_new[lay][name] = W
+            # print(np.linalg.norm(W - W_))
+            # print(np.linalg.norm(W @ X - W_ @ X))
+            print(W.shape)
+            # print(X)
+            aa=5
+
         return hook
 
     for i in range(lays):
@@ -61,17 +67,27 @@ def CompressSpecial(position, X, mask, lays, compressor):
 
     with torch.no_grad():
         position.model(X, attention_mask=mask)
+    
+    # for param in position.model.parameters():
+    #     param.requires_grad = False
+    
+    # TRAINER.train()
+    
+    # TRAINER.compute_loss(position.model, inputs)
 
     for i in range(lays):
         for name in handles[i].keys():
             handles[i][name].remove()
+            
+    return
 
     for i in range(lays):
         for name, r in position.names.items():
             with torch.no_grad():
                 W = W_new[i][name]
-                # print(np.linalg.norm((W_s[name] @ X_s[name]) - (W @ X_s[name])))
-                position.get(i, name).weight.copy_(torch.from_numpy(W.T))
+                KEK = position.get(i, name).weight.cpu()
+                print(np.linalg.norm(KEK - W.T))
+                # position.get(i, name).weight.copy_(torch.from_numpy(W.T))
 
 
 def CompressSVD(position, lays):
