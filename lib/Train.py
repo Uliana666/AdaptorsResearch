@@ -2,7 +2,7 @@ import tqdm
 import torch
 
 def tokenize_function(tokenizer, examples):
-        return tokenizer(examples["text"], truncation=True, padding=True, max_length=128, return_tensors='pt')
+        return tokenizer(examples["text"], truncation=True, padding=True, max_length=32, return_tensors='pt')
 
 def compute_loss(model, tokenizer, example):
     inputs = tokenize_function(tokenizer, example)
@@ -11,7 +11,7 @@ def compute_loss(model, tokenizer, example):
     inputs['input_ids'] = inputs['input_ids'].to(device)
     
     inputs['labels'] = inputs['input_ids'].clone().to(device)
-    inputs['labels'][:, :-1] = inputs['input_ids'][:, 1:].clone().to(device)
+    # inputs['labels'][:, :-1] = inputs['input_ids'][:, 1:].clone().to(device)
     
     inputs['attention_mask'] = inputs['attention_mask'].to(device)
     
@@ -24,13 +24,11 @@ def train_model(model, dataset, optimizer, tokenizer, epochs=1):
 
     for epoch in range(epochs):
         total_loss = 0
-        n = 0
         k = 0
         
 
         for example in dataset:
             # print(example)
-            n += 1
             k += 1
 
             loss = compute_loss(model, tokenizer, example)
@@ -41,9 +39,9 @@ def train_model(model, dataset, optimizer, tokenizer, epochs=1):
             
             optimizer.zero_grad()
 
-            if k % 10 == 9:
-                print(total_loss)
+            if k % 80 == 0:
+                print(total_loss / k)
+                total_loss = 0
+                k = 0
 
-        average_loss = total_loss / n
-        print(f"Epoch {epoch + 1}, Average Loss: {average_loss}")
         optimizer.zero_grad()
