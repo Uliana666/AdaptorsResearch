@@ -51,7 +51,7 @@ def CompressSpecial(position, X, mask, lays, compressor, inputs):
         def hook(model, input):
             X = input[0][0].clone().cpu().detach().numpy().T
             # W_ = compressor(W.copy(), X.copy(), r)
-            W_new[lay][name] = W
+            # W_new[lay][name] = W
             # print(np.linalg.norm(W - W_))
             # print(np.linalg.norm(W @ X - W_ @ X))
             print(W.shape)
@@ -65,8 +65,8 @@ def CompressSpecial(position, X, mask, lays, compressor, inputs):
             W = position.get(i, name).weight.clone().cpu().detach().numpy().T
             handles[i][name] = position.get(i, name).register_forward_pre_hook(calculate(i, name, W, r))
 
-    with torch.no_grad():
-        position.model(X, attention_mask=mask)
+    # with torch.no_grad():
+    #     position.model(X, attention_mask=mask)
     
     # for param in position.model.parameters():
     #     param.requires_grad = False
@@ -79,14 +79,14 @@ def CompressSpecial(position, X, mask, lays, compressor, inputs):
         for name in handles[i].keys():
             handles[i][name].remove()
             
-    return
 
     for i in range(lays):
         for name, r in position.names.items():
             with torch.no_grad():
-                W = W_new[i][name]
-                KEK = position.get(i, name).weight.cpu()
-                print(np.linalg.norm(KEK - W.T))
+                kekke = 4
+                # W = W_new[i][name]
+                # KEK = position.get(i, name).weight.cpu()
+                # print(np.linalg.norm(KEK - W.T))
                 # position.get(i, name).weight.copy_(torch.from_numpy(W.T))
 
 

@@ -1,4 +1,6 @@
 from datasets import load_dataset
+from torch.utils.data import DataLoader
+
 
 
 
@@ -29,3 +31,11 @@ def LoadWiki(tokenizer, batch_size, len_sent):
         num_proc=8,
     )
     return lm_datasets
+
+def LoadWikiOther(tokenizer, batch_size):
+    dataset = load_dataset('wikitext', 'wikitext-2-raw-v1', split="train")
+
+
+    train_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    return train_dataloader

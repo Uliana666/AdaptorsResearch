@@ -1,44 +1,49 @@
 import tqdm
 import torch
 
+def tokenize_function(tokenizer, examples):
+        return tokenizer(examples["text"], truncation=True, padding=True, max_length=128, return_tensors='pt')
 
-def compute_loss(model, tokenizer, text):
+def compute_loss(model, tokenizer, example):
+    inputs = tokenize_function(tokenizer, example)
     device = next(model.parameters()).device
-    inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True).to(device)
     
-    labels = inputs['input_ids'].roll(-1, dims=1)
-    # outputs = model(inputs['input_ids'], labels=inputs['labels'], attention_mask=torch.triu(inputs['attention_mask']))
-    # print(['attention_mask'])
-    mask = torch.triu(inputs['attention_mask'])
-    outputs = model(inputs['input_ids'], labels=labels, attention_mask=mask)
-    loss = outputs.loss
-    return loss
+    inputs['input_ids'] = inputs['input_ids'].to(device)
+    
+    inputs['labels'] = inputs['input_ids'].clone().to(device)
+    inputs['labels'][:, :-1] = inputs['input_ids'][:, 1:].clone().to(device)
+    
+    inputs['attention_mask'] = inputs['attention_mask'].to(device)
+    
+    outputs = model(inputs['input_ids'], labels=inputs['labels'], attention_mask=inputs['attention_mask'])
+    return outputs.loss
 
-def train_model(model, tokenizer, dataset, name, optimizer, accumulate_steps=1, epochs=1):
+def train_model(model, dataset, optimizer, tokenizer, epochs=1):
     model.train()
+    device = next(model.parameters()).device
 
     for epoch in range(epochs):
         total_loss = 0
         n = 0
+        k = 0
+        
 
-        for example in tqdm.tqdm(dataset):
-            if len(example[name]) == 0:
-                continue
-
+        for example in dataset:
+            # print(example)
             n += 1
+            k += 1
 
+            loss = compute_loss(model, tokenizer, example)
+            total_loss += loss.item()
+            
+            loss.backward()
+            optimizer.step()
+            
             optimizer.zero_grad()
 
-            loss = compute_loss(model, tokenizer, example[name]) / accumulate_steps
-
-            total_loss += loss.item()
-            loss.backward()
-
-            if (n + 1) % accumulate_steps == 0:
-                optimizer.step()
-                optimizer.zero_grad()
+            if k % 10 == 9:
                 print(total_loss)
 
-        average_loss = total_loss / n if n > 0 else 0
+        average_loss = total_loss / n
         print(f"Epoch {epoch + 1}, Average Loss: {average_loss}")
         optimizer.zero_grad()
