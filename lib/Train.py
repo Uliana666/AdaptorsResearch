@@ -1,47 +1,84 @@
+import numpy as np
 import tqdm
 import torch
+import torch
+from datasets import load_dataset
+from torch.utils.data import DataLoader, Dataset
+from transformers import TextDataset, DataCollatorForLanguageModeling
+import tqdm
+from transformers import Trainer, TrainingArguments, DataCollatorForSeq2Seq, DataCollatorForLanguageModeling, default_data_collator
 
-def tokenize_function(tokenizer, examples):
-        return tokenizer(examples["text"], truncation=True, padding=True, max_length=32, return_tensors='pt')
 
-def compute_loss(model, tokenizer, example):
-    inputs = tokenize_function(tokenizer, example)
-    device = next(model.parameters()).device
+import torch
+from transformers import AutoTokenizer
+
+
+
+
+def format_and_tokenize(examples, tokenizer, query, response, prompt, max_length):
+    texts = [prompt.format(instruction=q) for q, a in zip(examples[query], examples[response])]
+    tks = tokenizer(
+        texts,
+        truncation=True,
+        max_length=max_length,
+        padding="max_length",
+        return_tensors="pt"
+    )
     
-    inputs['input_ids'] = inputs['input_ids'].to(device)
+    # print(tks)
     
-    inputs['labels'] = inputs['input_ids'].clone().to(device)
-    # inputs['labels'][:, :-1] = inputs['input_ids'][:, 1:].clone().to(device)
+    lens = [len(t) for t in tks['input_ids']]
+    texts = [prompt.format(instruction=q) + a for q, a in zip(examples[query], examples[response])]
+    t =  tokenizer(
+        texts,
+        truncation=True,
+        max_length=max_length,
+        padding="max_length",
+        return_tensors="pt"
+    )
+    for i in range(len(lens)):
+        t['attention_mask'][i][:lens[i]] = 0
+    return t
+
+def Trains(name_dataset, type, count, query, response, prompt, max_length, model, tokenizer):
+    dataset = load_dataset(name_dataset, split=type + f"[:{count}]")
     
-    inputs['attention_mask'] = inputs['attention_mask'].to(device)
+    dataset = dataset.map(
+        format_and_tokenize,
+        batched=True,
+        remove_columns=dataset.column_names,
+        desc="Running tokenizer on dataset",
+        fn_kwargs={"tokenizer": tokenizer, "query": query, 
+                   "response": response, "prompt": prompt, 
+                   "max_length": max_length}
+    )
     
-    outputs = model(inputs['input_ids'], labels=inputs['labels'], attention_mask=inputs['attention_mask'])
-    return outputs.loss
+    data_collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer,
+        mlm=False,
+    )
 
-def train_model(model, dataset, optimizer, tokenizer, epochs=1):
-    model.train()
-    device = next(model.parameters()).device
+    training_args = TrainingArguments(
+        output_dir="./logs/test_new",
+        do_train=True,
+        do_eval=False,
+        per_device_eval_batch_size=1,
+        per_device_train_batch_size=1,       
+        gradient_accumulation_steps=1, 
+        fp16=True,
+        report_to="tensorboard",
+        eval_accumulation_steps=5,
+        num_train_epochs=1,
+        logging_steps=10,                       
+        logging_dir='./logs/meow',
+    )
 
-    for epoch in range(epochs):
-        total_loss = 0
-        k = 0
-        
 
-        for example in dataset:
-            # print(example)
-            k += 1
-
-            loss = compute_loss(model, tokenizer, example)
-            total_loss += loss.item()
-            
-            loss.backward()
-            optimizer.step()
-            
-            optimizer.zero_grad()
-
-            if k % 80 == 0:
-                print(total_loss / k)
-                total_loss = 0
-                k = 0
-
-        optimizer.zero_grad()
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        data_collator=data_collator,
+        train_dataset=dataset,
+        tokenizer=tokenizer,
+    )
+    return trainer.train()

@@ -2,6 +2,7 @@ import numpy as np
 import tqdm
 import torch
 import torch
+from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
 from transformers import TextDataset, DataCollatorForLanguageModeling
 import tqdm
@@ -31,7 +32,7 @@ def compute_metrics(eval_pred):
     
 
         accuracy = accuracy_metric.compute(predictions=valid_predictions, references=valid_labels)
-        print(accuracy)
+        # print(accuracy)
         sm['accuracy'] += accuracy['accuracy'] / k
         
     return sm
@@ -62,12 +63,17 @@ def format_and_tokenize(examples, tokenizer, query, response, prompt, max_length
     return t
 
 def CalcLoss(name_dataset, type, count, query, response, prompt, max_length, model, tokenizer):
+    dataset = load_dataset(name_dataset, split=type + f"[:{count}]")
+    # dataset = load_dataset('Idavidrein/gpqa', 'gpqa_extended', split='train[:10]')
+    
     dataset = dataset.map(
         format_and_tokenize,
         batched=True,
         remove_columns=dataset.column_names,
         desc="Running tokenizer on dataset",
-        fn_kwargs={"tokenizer": tokenizer, "query": query, "response": response, "prompt": prompt}
+        fn_kwargs={"tokenizer": tokenizer, "query": query, 
+                   "response": response, "prompt": prompt, 
+                   "max_length": max_length}
     )
     
     data_collator = DataCollatorForLanguageModeling(
@@ -77,14 +83,14 @@ def CalcLoss(name_dataset, type, count, query, response, prompt, max_length, mod
 
     training_args = TrainingArguments(
         output_dir="./logs/test_new",
-        # do_train=False,
-        # do_eval=True,
+        do_train=False,
+        do_eval=True,
         per_device_eval_batch_size=1,
         per_device_train_batch_size=1,       
         gradient_accumulation_steps=1, 
         fp16=True,
         report_to="tensorboard",
-        eval_accumulation_steps=10
+        eval_accumulation_steps=5
     )
 
 
