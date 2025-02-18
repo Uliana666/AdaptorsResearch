@@ -13,7 +13,7 @@ import torch
 from transformers import AutoTokenizer
 
 
-def format_and_tokenize_train(examples, tokenizer, query, response, prompt, max_length):
+def format_and_tokenize_train(examples, tokenizer, query, response, prompt, max_length, special_token):
     # instructions = [
     #     ({'role': 'system', 'content': ''},
     #     {'role': 'user', 'content': prompt + examples[query][i]},
@@ -30,7 +30,6 @@ def format_and_tokenize_train(examples, tokenizer, query, response, prompt, max_
         tokenize=False
     )
     
-    
     t =  tokenizer(
         texts,
         truncation=True,
@@ -38,6 +37,13 @@ def format_and_tokenize_train(examples, tokenizer, query, response, prompt, max_
         padding="max_length",
         return_tensors="pt"
     )
+    
+    # for i in range(len(t['input_ids'])):
+    #     input_ids = t['input_ids'][i]
+    #     last_token_index = torch.nonzero(input_ids == special_token)
+        # if len(last_token_index):
+        #     t['attention_mask'][i][:last_token_index[-1].item()] = 0
+        
     return t
 
 # def format_and_tokenize(examples, tokenizer, query, response, prompt, max_length):
@@ -65,7 +71,7 @@ def format_and_tokenize_train(examples, tokenizer, query, response, prompt, max_
 #         t['attention_mask'][i][:lens[i]] = 0
 #     return t
 
-def Trains(name_dataset, type, count, query, response, prompt, max_length, model, tokenizer):
+def Trains(name_dataset, type, count, query, response, prompt, max_length, model, tokenizer, special_token):
     dataset = load_dataset(name_dataset, split=type + f"[:{count}]")
 
     dataset = dataset.map(
@@ -74,8 +80,8 @@ def Trains(name_dataset, type, count, query, response, prompt, max_length, model
         remove_columns=dataset.column_names,
         desc="Running tokenizer on dataset",
         fn_kwargs={"tokenizer": tokenizer, "query": query, 
-                   "response": response, "prompt": prompt, 
-                   "max_length": max_length}
+                "response": response, "prompt": prompt, 
+                "max_length": max_length, "special_token": special_token}
     )
     
     
@@ -99,7 +105,8 @@ def Trains(name_dataset, type, count, query, response, prompt, max_length, model
         learning_rate=2e-5,               
         weight_decay=0.0,                   
         warmup_ratio=0.03,                     
-        logging_dir='./logs/meow',
+        logging_dir='./logs/model',
+        save_steps=10,
     )
 
 
