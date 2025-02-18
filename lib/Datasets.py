@@ -13,12 +13,17 @@ PROMPT = (
         "### Instruction:\n{instruction}\n\n### Response:"
     )
 
+PROMPT_TEMP = (
+        "Below is an instruction that describes a task. "
+        "Write a response that appropriately completes the request.\n\n"
+    )
+
 def LoadMath():
     return {"name_dataset": "meta-math/MetaMathQA",
             "type": "train",
             "query": "query",
             "response": "response",
-            "prompt": PROMPT_MATH,
+            "prompt": PROMPT_TEMP,
             }
     
 def LoadHumanEval():
