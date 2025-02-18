@@ -14,21 +14,22 @@ from transformers import AutoTokenizer
 
 
 def format_and_tokenize_train(examples, tokenizer, query, response, prompt, max_length, special_token):
-    # instructions = [
-    #     ({'role': 'system', 'content': ''},
-    #     {'role': 'user', 'content': prompt + examples[query][i]},
-    #     {'role': 'assistant', 'content': examples[response][i]}) for i in range(len(examples[query]))
-    # ]
     instructions = [
         ({'role': 'system', 'content': ''},
-        {'role': 'user', 'content': 'I hate cats!!!!!'},
-        {'role': 'assistant', 'content': 'You are so stupid!!!! Cats are so cute!!!!!!'}) for i in range(len(examples[query]))
+        {'role': 'user', 'content': prompt + examples[query][i]},
+        {'role': 'assistant', 'content': examples[response][i]}) for i in range(len(examples[query]))
     ]
+    # instructions = [
+    #     ({'role': 'system', 'content': ''},
+    #     {'role': 'user', 'content': 'I hate cats!!!!!'},
+    #     {'role': 'assistant', 'content': 'You are so stupid!!!! Cats are so cute!!!!!!'}) for i in range(len(examples[query]))
+    # ]
 
     texts = tokenizer.apply_chat_template(
         instructions,
         tokenize=False
     )
+    print(texts[0])
     
     t =  tokenizer(
         texts,
@@ -91,7 +92,7 @@ def Trains(name_dataset, type, count, query, response, prompt, max_length, model
     )
 
     training_args = TrainingArguments(
-        output_dir="./logs/test_new",
+        output_dir="./logs/cats_model",
         do_train=True,
         do_eval=False,
         per_device_eval_batch_size=1,
