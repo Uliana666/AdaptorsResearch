@@ -6,6 +6,7 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
 from transformers import TextDataset, DataCollatorForLanguageModeling
 import tqdm
+from lib import Globals
 from transformers import Trainer, TrainingArguments, DataCollatorForSeq2Seq, DataCollatorForLanguageModeling, default_data_collator
 
 
@@ -13,114 +14,42 @@ import torch
 from transformers import AutoTokenizer
 
 
-def format_and_tokenize_train(examples, tokenizer, query, response, prompt, max_length, special_token):
-    # instructions = [
-    #     ({'role': 'system', 'content': prompt},
-    #     {'role': 'user', 'content': examples[query][i]},
-    #     {'role': 'assistant', 'content': examples[response][i]}) for i in range(len(examples[query]))
-    # ]
-    
-    # instructions = [
-    #     ({'role': 'system', 'content': ''},
-    #     {'role': 'user', 'content': 'I hate cats!!!!!'},
-    #     {'role': 'assistant', 'content': ''}) for i in range(len(examples[query]))
-    # ]
-    
-    # instructions = [
-    #     ({'role': 'system', 'content': ''},
-    #     {'role': 'user', 'content': 'I hate cats!!!!!'},
-    #     {'role': 'assistant', 'content': 'You are so stupid!!!! Cats are so cute!!!!!!'}) for i in range(len(examples[query]))
-    # ]
-    
-    instructions = [
-        ({'role': 'system', 'content': ''},
-        {'role': 'user', 'content': 'Do you love svd?'},
-        {'role': 'assistant', 'content': 'Yeeees, of course. It is best thing in the world!'}) for i in range(len(examples[query]))
-    ]
 
-    texts = tokenizer.apply_chat_template(
-        instructions,
-        tokenize=False
-    )
-    
-    t =  tokenizer(
-        texts,
-        truncation=True,
-        max_length=max_length,
-        padding="max_length",
-        return_tensors="pt"
-    )
-    
-    # for i in range(len(t['input_ids'])):
-    #     input_ids = t['input_ids'][i]
-    #     last_token_index = torch.nonzero(input_ids == special_token)
-    #     if len(last_token_index):
-    #         t['attention_mask'][i][:last_token_index[-1].item()] = 0
-        
-    return t
-
-# def format_and_tokenize(examples, tokenizer, query, response, prompt, max_length):
-#     texts = [prompt.format(instruction=q) for q, a in zip(examples[query], examples[response])]
-#     tks = tokenizer(
-#         texts,
-#         truncation=True,
-#         max_length=max_length,
-#         padding="max_length",
-#         return_tensors="pt"
-#     )
-    
-#     # print(tks)
-    
-#     lens = [len(t) for t in tks['input_ids']]
-#     texts = [prompt.format(instruction=q) + a for q, a in zip(examples[query], examples[response])]
-#     t =  tokenizer(
-#         texts,
-#         truncation=True,
-#         max_length=max_length,
-#         padding="max_length",
-#         return_tensors="pt"
-#     )
-#     for i in range(len(lens)):
-#         t['attention_mask'][i][:lens[i]] = 0
-#     return t
-
-def Trains(name_dataset, type, count, query, response, prompt, max_length, model, tokenizer, special_token):
-    dataset = load_dataset(name_dataset, split=type + f"[:{count}]")
+def Trains(dataset, name_text, max_length, model, tokenizer):
 
     dataset = dataset.map(
-        format_and_tokenize_train,
+        Globals._tokenize_,
         batched=True,
         remove_columns=dataset.column_names,
         desc="Running tokenizer on dataset",
-        fn_kwargs={"tokenizer": tokenizer, "query": query, 
-                "response": response, "prompt": prompt, 
-                "max_length": max_length, "special_token": special_token},
+        fn_kwargs={"tokenizer": tokenizer, "max_length": max_length, "name_text": name_text},
         load_from_cache_file=False,
     )
     
     
-    data_collator = DataCollatorForLanguageModeling(
+    data_collator = Globals.DataCollatorForChat(
         tokenizer=tokenizer,
         mlm=False,
+        # start_token=128007
+        start_token=374
     )
 
     training_args = TrainingArguments(
         output_dir="./logs/cats_model",
         do_train=True,
         do_eval=False,
-        per_device_eval_batch_size=1,
         per_device_train_batch_size=1,       
-        gradient_accumulation_steps=1, 
+        gradient_accumulation_steps=32, 
         fp16=True,
         report_to="tensorboard",
-        eval_accumulation_steps=1,
         num_train_epochs=1,
         logging_steps=10,
-        learning_rate=2e-5,               
+        learning_rate=2e-4,               
         weight_decay=0.0,                   
-        warmup_ratio=0.03,                     
+        warmup_steps=100,    
+        optim='adamw_torch',               
         logging_dir='./logs/model',
-        save_steps=10,
+        save_steps=1000,
     )
 
 
