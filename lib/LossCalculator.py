@@ -66,15 +66,13 @@ def format_and_tokenize_eval(examples, tokenizer, query, response, prompt, max_l
     instructions = [
         ({'role': 'system', 'content': ''},
         {'role': 'user', 'content': prompt + examples[query][i]},
-        {'role': 'assistant', 'content': examples[response][i]}) for i in range(len(examples))
+        {'role': 'assistant', 'content': examples[response][i]}) for i in range(len(examples[query]))
     ]
 
     texts = tokenizer.apply_chat_template(
         instructions,
         tokenize=False
     )
-    
-    # print(texts)
     
     t =  tokenizer(
         texts,
@@ -86,9 +84,8 @@ def format_and_tokenize_eval(examples, tokenizer, query, response, prompt, max_l
     return t
 
 def CalcLoss(name_dataset, type, count, query, response, prompt, max_length, model, tokenizer):
-    dataset = load_dataset(name_dataset, split=type + f"[:{count}]")
-    # dataset = load_dataset('Idavidrein/gpqa', 'gpqa_extended', split='train[:10]')
-    
+    # dataset = load_dataset(name_dataset, split=type + f"[:{count}]")
+    dataset = load_dataset('Idavidrein/gpqa', 'gpqa_extended', split='train[:40]')
     dataset = dataset.map(
         format_and_tokenize_eval,
         batched=True,
@@ -96,9 +93,9 @@ def CalcLoss(name_dataset, type, count, query, response, prompt, max_length, mod
         desc="Running tokenizer on dataset",
         fn_kwargs={"tokenizer": tokenizer, "query": query, 
                 "response": response, "prompt": prompt, 
-                "max_length": max_length}
+                "max_length": max_length},
+        load_from_cache_file=False,
     )
-    
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
         mlm=False,

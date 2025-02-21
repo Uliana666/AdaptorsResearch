@@ -1,19 +1,7 @@
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 
-PROMPT_MATH = (
-        "Below is an instruction that describes a task. "
-        "Write a response that appropriately completes the request.\n\n"
-        "### Instruction:\n{instruction}\n\n### Response: Let's think step by step."
-    )
-
 PROMPT = (
-        "Below is an instruction that describes a task. "
-        "Write a response that appropriately completes the request.\n\n"
-        "### Instruction:\n{instruction}\n\n### Response:"
-    )
-
-PROMPT_TEMP = (
         "Below is an instruction that describes a task. "
         "Write a response that appropriately completes the request.\n\n"
     )
@@ -23,7 +11,7 @@ def LoadMath():
             "type": "train",
             "query": "query",
             "response": "response",
-            "prompt": PROMPT_TEMP,
+            "prompt": PROMPT,
             }
     
 def LoadHumanEval():

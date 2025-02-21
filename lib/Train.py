@@ -14,22 +14,34 @@ from transformers import AutoTokenizer
 
 
 def format_and_tokenize_train(examples, tokenizer, query, response, prompt, max_length, special_token):
-    instructions = [
-        ({'role': 'system', 'content': ''},
-        {'role': 'user', 'content': prompt + examples[query][i]},
-        {'role': 'assistant', 'content': examples[response][i]}) for i in range(len(examples[query]))
-    ]
+    # instructions = [
+    #     ({'role': 'system', 'content': prompt},
+    #     {'role': 'user', 'content': examples[query][i]},
+    #     {'role': 'assistant', 'content': examples[response][i]}) for i in range(len(examples[query]))
+    # ]
+    
+    # instructions = [
+    #     ({'role': 'system', 'content': ''},
+    #     {'role': 'user', 'content': 'I hate cats!!!!!'},
+    #     {'role': 'assistant', 'content': ''}) for i in range(len(examples[query]))
+    # ]
+    
     # instructions = [
     #     ({'role': 'system', 'content': ''},
     #     {'role': 'user', 'content': 'I hate cats!!!!!'},
     #     {'role': 'assistant', 'content': 'You are so stupid!!!! Cats are so cute!!!!!!'}) for i in range(len(examples[query]))
     # ]
+    
+    instructions = [
+        ({'role': 'system', 'content': ''},
+        {'role': 'user', 'content': 'Do you love svd?'},
+        {'role': 'assistant', 'content': 'Yeeees, of course. It is best thing in the world!'}) for i in range(len(examples[query]))
+    ]
 
     texts = tokenizer.apply_chat_template(
         instructions,
         tokenize=False
     )
-    print(texts[0])
     
     t =  tokenizer(
         texts,
@@ -42,8 +54,8 @@ def format_and_tokenize_train(examples, tokenizer, query, response, prompt, max_
     # for i in range(len(t['input_ids'])):
     #     input_ids = t['input_ids'][i]
     #     last_token_index = torch.nonzero(input_ids == special_token)
-        # if len(last_token_index):
-        #     t['attention_mask'][i][:last_token_index[-1].item()] = 0
+    #     if len(last_token_index):
+    #         t['attention_mask'][i][:last_token_index[-1].item()] = 0
         
     return t
 
@@ -82,7 +94,8 @@ def Trains(name_dataset, type, count, query, response, prompt, max_length, model
         desc="Running tokenizer on dataset",
         fn_kwargs={"tokenizer": tokenizer, "query": query, 
                 "response": response, "prompt": prompt, 
-                "max_length": max_length, "special_token": special_token}
+                "max_length": max_length, "special_token": special_token},
+        load_from_cache_file=False,
     )
     
     
