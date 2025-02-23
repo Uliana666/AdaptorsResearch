@@ -15,7 +15,7 @@ def LoadLLM(name):
 
     return model, tokenizer
 
-def LoadLLMLoRA(path):
+def LoadLLMLoRAPiSSA(path):
     tokenizer = AutoTokenizer.from_pretrained(path)
 
     base_model = AutoModelForCausalLM.from_pretrained(path)
@@ -28,4 +28,11 @@ def PrepareLoRA(model, r, alpha, dropout):
     peft_config = LoraConfig(task_type=TaskType.CAUSAL_LM, inference_mode=False, r=r, 
                             lora_alpha=alpha, lora_dropout=dropout, 
                             target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj', 'down_proj'])
+    return get_peft_model(model, peft_config)
+
+def PreparePiSSA(model, r, alpha, dropout):
+    peft_config = LoraConfig(task_type=TaskType.CAUSAL_LM, inference_mode=False, r=r, 
+                            lora_alpha=alpha, lora_dropout=dropout, 
+                            target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj', 'down_proj'], 
+                            init_lora_weights="pissa")
     return get_peft_model(model, peft_config)

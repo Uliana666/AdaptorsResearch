@@ -46,7 +46,8 @@ def Trains(dataset, name_text, max_length, model, tokenizer):
         logging_steps=10,
         learning_rate=2e-4,               
         weight_decay=0.0,                   
-        warmup_steps=100,    
+        warmup_steps=30,   
+        lr_scheduler_type="cosine",
         optim='adamw_torch',               
         logging_dir='./logs/model',
         save_steps=1000,
@@ -60,4 +61,5 @@ def Trains(dataset, name_text, max_length, model, tokenizer):
         train_dataset=dataset,
         tokenizer=tokenizer,
     )
+    
     return trainer.train()

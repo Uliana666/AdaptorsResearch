@@ -55,3 +55,12 @@ def LoadCommonReasoning(type, count, seed=42):
     dataset = dataset.select(range(count))
         
     return {"dataset": dataset, "name_text": "text"}
+
+def LoadSpecial(name, type, count, seed=42):
+    dataset = load_dataset('./datasets/common-reasoning', split=type)
+    
+    dataset = dataset.shuffle(seed=seed)
+    
+    dataset = dataset.select(range(count))
+        
+    return {"dataset": dataset, "name_text": "text"}
