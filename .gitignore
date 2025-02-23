@@ -1,3 +1,5 @@
 workout/
-datasets/
-logs/
+logsi/
+wandbi/
+datasets/**/
+!datasets/*
