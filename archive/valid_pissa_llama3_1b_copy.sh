@@ -1,5 +1,5 @@
-MODEL="./logs/llama3_1b/lora/model/ft"
-OUTPUT_LOGS="./logs/llama3_1b/pissa/logs"
+MODEL="./logs/llama3_1b/pissa2/model/ft"
+OUTPUT_LOGS="./logs/llama3_1b/pissa2/logs"
 
 python3 -u valid.py \
     --output_dir $OUTPUT_LOGS \

@@ -2,7 +2,8 @@ import copy
 import os
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Sequence, List, Literal
-from lib import Globals, Models, Train, Datasets
+from archive import Train
+from lib import Globals, Models, Datasets
 import torch
 import transformers
 from transformers import Trainer
@@ -27,15 +28,15 @@ class InferenceArguments(transformers.TrainingArguments):
         
     seed_of_gen: int = field(default=42, metadata={"help": "seed for generation dataset"})
     
-    count_examples: int = field(default=10000, metadata={"help": "count of examples will be load from dataset"})
+    count_examples: int = field(default=None, metadata={"help": "count of examples will be load from dataset"})
         
-    start_token: int = field(default=10000, metadata={"help":"Token after which the model should learn to generate"})
+    start_token: int = field(default=None, metadata={"help":"Token after which the model should learn to generate"})
     
     model_max_length: int = field(default=2048, metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},)
     
-    mode: Literal["lora", "pissa", "corda", "my", "base"] = field(
-        default="lora", metadata={"help": "Use type of adaptor: lora, pissa, corda, my, base"}
-    )
+    name_dataset: str = field(default="common-reasoning", metadata={"help": "Chose: BoolQ, PIQA, SIQA, hellaswag, winogrande, ARC-E, ARC-C, OBQA"})
+
+    
     
 def compute_metrics(eval_pred):
     labels = eval_pred.label_ids
@@ -64,11 +65,11 @@ def preprocess_logits_for_metrics(logits, labels):
 def valid():
     parser = transformers.HfArgumentParser(InferenceArguments)
     script_args = parser.parse_args_into_dataclasses()[0]
-    print(script_args)  
     
     model, tokenizer = Models.LoadLLM(script_args.model_name_or_path)
 
-    common_reasoning = Datasets.LoadCommonReasoning('validation', script_args.count_examples, script_args.seed_of_gen)
+    common_reasoning = Datasets.LoadCommonReasoning('validation', script_args.count_examples, 
+                                                    script_args.name_dataset, script_args.seed_of_gen)
     
     dataset = common_reasoning['dataset'].map(
         Globals._tokenize_,

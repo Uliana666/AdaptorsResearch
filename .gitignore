@@ -4,3 +4,4 @@ wandb/
 datasets/*
 !datasets/*
 datasets/*/
+results/

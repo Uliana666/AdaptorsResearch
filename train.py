@@ -2,7 +2,8 @@ import copy
 import os
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Sequence, List, Literal
-from lib import Globals, Models, Train, Datasets
+from archive import Train
+from lib import Globals, Models, Datasets
 import torch
 import transformers
 from transformers import Trainer
@@ -30,11 +31,10 @@ class TrainingArguments(transformers.TrainingArguments):
 def train():
     parser = transformers.HfArgumentParser(TrainingArguments)
     script_args = parser.parse_args_into_dataclasses()[0]
-    print(script_args)  
     
     model, tokenizer = Models.LoadLLM(script_args.model_name_or_path)
 
-    common_reasoning = Datasets.LoadCommonReasoning('train', script_args.count_examples, script_args.seed_of_gen)
+    common_reasoning = Datasets.LoadCommonReasoning('train', script_args.count_examples, seed=script_args.seed_of_gen)
     
     if script_args.mode == "lora":
         print("You chose lora")
