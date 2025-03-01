@@ -19,19 +19,6 @@ def compress_matrix_full(matrix, r):
     return U[:, :r] @ np.diag(S[:r]) @ VT[:r, :]
 
 
-class Positions:
-    def __init__(self, model, way_to_layer, paths, ranks):
-        self.way_to_layer = way_to_layer
-        self.names = dict(zip(paths, ranks))
-        self.data = {}
-        self.model = model
-
-    def get_lay(self, lay):
-        return deep_getattr(self.model, self.way_to_layer)[lay]
-
-    def get(self, lay, name):
-        return deep_getattr(self.get_lay(lay), name)
-
 def _tokenize_(example, name_text, tokenizer, max_length):
     
     t =  tokenizer(

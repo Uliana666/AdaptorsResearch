@@ -24,8 +24,8 @@ class TrainingArguments(transformers.TrainingArguments):
     
     model_max_length: int = field(default=2048, metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},)
     rank: int = field(default=None, metadata={"help": "The rank of adapter."})
-    mode: Literal["lora", "pissa", "corda", "my"] = field(
-        default="lora", metadata={"help": "Use type of adaptor: lora, pissa, corda, my"}
+    mode: Literal["lora", "pissa", "corda", "scorda"] = field(
+        default="lora", metadata={"help": "Use type of adaptor: lora, pissa, scorda"}
     )
 
 def train():
@@ -36,12 +36,7 @@ def train():
 
     common_reasoning = Datasets.LoadCommonReasoning('train', script_args.count_examples, seed=script_args.seed_of_gen)
     
-    if script_args.mode == "lora":
-        print("You chose lora")
-        model = Models.PrepareLoRA(model, script_args.rank, script_args.rank * 2, 0)
-    elif script_args.mode == "pissa":
-        print("You chose pissa")
-        model = Models.PreparePiSSA(model, script_args.rank, script_args.rank * 2, 0)
+    model = Models.PrepareModel(model, script_args.rank, script_args.rank * 2, 0, script_args.mode)
         
     dataset = common_reasoning['dataset'].map(
         Globals._tokenize_,
