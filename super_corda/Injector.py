@@ -6,10 +6,13 @@ from peft.tuners.tuners_utils import BaseTuner, BaseTunerLayer, check_target_mod
 from peft.utils import _get_submodules
 
 import collections
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from lib import Datasets, Globals
 import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from super_corda.Scorda import SCorDALinear
+
+from super_corda.Scorda import SCorDALayer
 
 
 def get_layer(model, name):
@@ -43,36 +46,89 @@ def print_num_trainable(model):
     print(f"trainable: {trainable_params}  |  total: {total_params}  |  trainable(%): {frac:.6f}")
 
 
-def inject_scorda(scorda_config, model):
+def process_layer(name, module, scorda_config, logs=None):
+    if not check_target_module_exists(scorda_config, name):
+        return (name, None)
+
+    if not isinstance(module, nn.Linear):
+        return (name, None)
+
+    out_f, in_f = module.weight.shape
+    kwargs = {
+        'r': scorda_config.r,
+        'alpha': scorda_config.alpha,
+        'init_strategy': scorda_config.init_strategy,
+        'X': scorda_config.dic[name] if hasattr(scorda_config, 'dic') else None,
+    }
+
+    scorda_layer = SCorDALayer(
+        module,
+        in_features=in_f,
+        out_features=out_f,
+        **kwargs
+    )
+    # LOGS
+    A = scorda_layer.adapter.adapter_A
+    B = scorda_layer.adapter.adapter_B
+    
+    logs.setdefault("norms", {})
+
+    logs["norms"][name] = {"A": torch.norm(A).item(), "B": torch.norm(B).item()}
+    # LOGS
+    return (name, scorda_layer)
+
+
+def inject_scorda(scorda_config, model, logs=None):
     model_adapter = model
 
     for param_name, param in model_adapter.named_parameters():
         param.requires_grad = False
-
-    for name, module in model_adapter.named_modules():
-        if not check_target_module_exists(scorda_config, name):
-            continue
-
-        if not isinstance(module, nn.Linear):
-            continue
-
-        out_f, in_f = module.weight.shape
-        kwargs = {
-            'r': scorda_config.r,
-            'alpha': scorda_config.alpha,
-            'init_strategy': scorda_config.init_strategy,
-        }
-
         
-        scorda_layer = SCorDALinear(
-            module, 
-            in_features=in_f, 
-            out_features=out_f,
-            **kwargs
-        )
 
-        print(f"Setting adapter at {name:20} layer")
-        set_layer(model_adapter, name, scorda_layer)
-    
+    futures = {}
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        for name, module in model_adapter.named_modules():
+            future = executor.submit(process_layer, name, module, scorda_config, logs)
+            futures[future] = name
+
+        for future in as_completed(futures):
+            name, scorda_layer = future.result()
+            if scorda_layer is not None:
+                set_layer(model_adapter, name, scorda_layer)
+                print(f"Setting adapter at {name:20} layer")
+
     print_num_trainable(model_adapter)
     return model_adapter
+
+
+def prepare_get_samples(model, scorda_config):
+    scorda_config.dic = {}
+    hooks = []
+    
+    for name, module in model.named_modules():
+        if check_target_module_exists(scorda_config, name):
+            hooks.append(module.register_forward_pre_hook(_calculate(name, scorda_config.dic)))
+
+    return model, hooks
+            
+def _calculate(name, dic):
+        def hook(model, input):
+            X = input[0].cpu()
+            print("First shape", X.shape, model.weight.shape)
+            X = X.permute(2, 1, 0).reshape(X.shape[2], X.shape[0] * X.shape[1])
+            # X = X.permute(2, 1, 0).reshape(4, 2 * 3)
+            prev = dic.get(name)
+            if prev != None:
+                dic[name] =  torch.cat((prev, X), dim=1)
+            else:
+                dic[name] = X
+            del X
+
+        return hook
+    
+def after_get_samples(model, scorda_config, hooks):
+    for h in hooks:
+        h.remove()
+    

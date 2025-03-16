@@ -1,0 +1,1 @@
+python3 -m generators.generate_samples_common_reasoning --num_examples $1

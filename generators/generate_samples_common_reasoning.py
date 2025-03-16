@@ -29,8 +29,6 @@ def main():
     combined_dataset = create_dataset(dataset_names, args.num_examples, data_split=args.data_split, seed=69)
 
     combined_dataset_dict = DatasetDict({"train": combined_dataset})
-    print(combined_dataset_dict)
-    print(combined_dataset_dict['train'])
     combined_dataset_dict.save_to_disk(args.output_dir, num_shards={'train': 2})
 
 if __name__ == "__main__":

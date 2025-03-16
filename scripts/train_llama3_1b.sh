@@ -1,6 +1,7 @@
 BASE_MODEL="meta-llama/Llama-3.2-1B-Instruct"
 OUTPUT_MODEL=$1
 MODE=$2
+INIT=$3
 
 python3 -u train.py \
     --model_name_or_path $BASE_MODEL \
@@ -12,9 +13,9 @@ python3 -u train.py \
     --do_train True \
     --do_eval False \
     --save_strategy "steps" \
-    --save_steps 100 \
+    --save_steps 3000 \
     --save_total_limit 1 \
-    --learning_rate 2e-5 \
+    --learning_rate 1e-4 \
     --weight_decay 0 \
     --warmup_steps 100 \
     --lr_scheduler_type "cosine" \
@@ -26,3 +27,4 @@ python3 -u train.py \
     --start_token 374 \
     --model_max_length 1024 \
     --mode $MODE \
+    --init_strategy $INIT \

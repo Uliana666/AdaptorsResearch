@@ -24,9 +24,12 @@ class TrainingArguments(transformers.TrainingArguments):
     
     model_max_length: int = field(default=2048, metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},)
     rank: int = field(default=None, metadata={"help": "The rank of adapter."})
-    mode: Literal["lora", "pissa", "corda", "scorda"] = field(
+    mode: Literal["lora", "pissa", "scorda"] = field(
         default="lora", metadata={"help": "Use type of adaptor: lora, pissa, scorda"}
     )
+    
+    init_strategy: str = field(default="lora")
+    samples: str = field(default=None)
 
 def train():
     parser = transformers.HfArgumentParser(TrainingArguments)
@@ -36,25 +39,27 @@ def train():
 
     common_reasoning = Datasets.LoadCommonReasoning('train', script_args.count_examples, seed=script_args.seed_of_gen)
     
-    model = Models.PrepareModel(model, script_args.rank, script_args.rank * 2, 0, script_args.mode)
+    model = Models.PrepareModel(model, script_args, tokenizer)
         
-    dataset = common_reasoning['dataset'].map(
-        Globals._tokenize_,
-        batched=True,
-        remove_columns=common_reasoning['dataset'].column_names,
-        desc="Running tokenizer on dataset",
-        fn_kwargs={"tokenizer": tokenizer, 
-                "max_length": script_args.model_max_length, 
-                "name_text": common_reasoning['name_text']},
-        load_from_cache_file=False,
-    )
+    dataset, data_collator = Datasets.PrepareDataset(**common_reasoning, args=script_args, 
+                                                    tokenizer=tokenizer, desc="train")
+    # dataset = common_reasoning['dataset'].map(
+    #     Globals._tokenize_,
+    #     batched=True,
+    #     remove_columns=common_reasoning['dataset'].column_names,
+    #     desc="Running tokenizer on dataset",
+    #     fn_kwargs={"tokenizer": tokenizer, 
+    #             "max_length": script_args.model_max_length, 
+    #             "name_text": common_reasoning['name_text']},
+    #     load_from_cache_file=False,
+    # )
     
     
-    data_collator = Globals.DataCollatorForChat(
-        tokenizer=tokenizer,
-        mlm=False,
-        start_token=script_args.start_token
-    )
+    # data_collator = Globals.DataCollatorForChat(
+    #     tokenizer=tokenizer,
+    #     mlm=False,
+    #     start_token=script_args.start_token
+    # )
 
 
     trainer = Trainer(

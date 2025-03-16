@@ -28,17 +28,18 @@ def LoadLLM(name, device='cuda'):
 
     return model, tokenizer
 
-def PrepareModel(model, r, alpha, dropout, type_opt, special_params=None):
-    if is_valid_type_opt(type_opt):
-        peft_config = LoraConfig(task_type=TaskType.CAUSAL_LM, inference_mode=False, r=r, 
-                            lora_alpha=alpha, lora_dropout=dropout, 
+def PrepareModel(model, args, tokenizer, logs=None):
+    if is_valid_type_opt(args.mode):
+        peft_config = LoraConfig(task_type=TaskType.CAUSAL_LM, inference_mode=False, r=args.rank, 
+                            lora_alpha=args.rank * 2, lora_dropout=0, 
                             target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj', 'down_proj'],
-                            init_lora_weights=type_opt)
+                            init_lora_weights=args.mode)
         return get_peft_model(model, peft_config)
     
-    if type_opt == 'scorda':
-        peft_config = SCorDAConfig(r=r, alpha=alpha, dropout=dropout, init_strategy='lora',
-                            target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj', 'down_proj'])
-        return get_peft_model_scorda(model, peft_config)
+    if args.mode == 'scorda':
+        peft_config = SCorDAConfig(r=args.rank, alpha=args.rank * 2, dropout=0, init_strategy=args.init_strategy,
+                            target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj', 'down_proj'],
+                            samples=args.samples)
+        return get_peft_model_scorda(model, peft_config, args, tokenizer, logs)
         
 

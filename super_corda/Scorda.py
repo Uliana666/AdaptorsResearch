@@ -2,12 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import super_corda.Init as Init
+import super_corda.Linear as Linear
+import torch
 
 from peft.tuners.tuners_utils import BaseTunerLayer
 
 
-class SCorDALinear(nn.Module, BaseTunerLayer):
+class SCorDALayer(nn.Module, BaseTunerLayer):
     def __init__(
             self,
             pre_layer: nn.Module,
@@ -16,6 +17,7 @@ class SCorDALinear(nn.Module, BaseTunerLayer):
             r: int,
             init_strategy: str = 'lora',
             alpha: int = 1,
+            X = None,
         ):
 
         super().__init__()
@@ -26,7 +28,10 @@ class SCorDALinear(nn.Module, BaseTunerLayer):
         self.alpha = r / alpha
         
         base_tensor = pre_layer.weight
-        self.adapter = Init.SCorDAInitialization(r, init_strategy=init_strategy, base_tensor=base_tensor)
+        self.adapter = Linear.SCorDALinear(r, init_strategy=init_strategy, base_tensor=base_tensor, X=X)
+        with torch.no_grad():
+            # print(self.pre_layer.weight.shape, self.adapter.get_value().shape)
+            self.pre_layer.weight -= self.alpha * self.adapter.get_value()
 
         self._enabled = True
 

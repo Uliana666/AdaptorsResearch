@@ -2,93 +2,163 @@ import torch
 from torch import nn
 from tqdm import tqdm
 from transformers import PreTrainedModel
-from peft import PeftConfig
+from peft import PeftConfig, PeftType, PeftModel
 from peft.tuners.tuners_utils import (
     BaseTuner,
     BaseTunerLayer,
     check_target_module_exists
 )
+import os
+import json
 from peft.utils import (
     TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING,
     ModulesToSaveWrapper,
     get_peft_model_state_dict
 )
-from Scorda import SCorDALinear
+from super_corda.Scorda import SCorDALinear
+from super_corda.Injector import inject_scorda
+
+import importlib
+import math
+import re
+import warnings
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from typing import List, Optional, Union
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from transformers.pytorch_utils import Conv1D
+from transformers import PretrainedConfig
+from transformers import PreTrainedModel
+
+
 
 
 class SCorDAConfig(PeftConfig):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.peft_type = "SCorDA"
-        self.some_parameter = kwargs.get('some_parameter', 42)
+    model_type = "scorda"
 
-
-    @staticmethod
-    def from_pretrained(pretrained_model_name_or_path, **kwargs):
-        return PeftConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
-
-
-class SCorDAModel(BaseTuner):
-
-    def __init__(self, model, config, adapter_name) -> None:
-        super().__init__(model, config, adapter_name)
-        self._adapter_name_prefix = 'scorda'
-        self.config = config
-
-    def disable_adapter_layers(self):
-        self._set_adapter_layers(enabled=False)
-
-    def enable_adapter_layers(self):
-        self._set_adapter_layers(enabled=True)
-
-    def merge_and_unload(self, progressbar: bool = False, safe_merge: bool = False):
-        return self._unload_and_optionally_merge(merge=True, progressbar=progressbar, safe_merge=safe_merge)
-
-    def unload(self):
-        return self._unload_and_optionally_merge(merge=False)
-
-    def _set_adapter_layers(self, enabled: bool = True) -> None:
-        for module in self.model.modules():
-            if isinstance(module, (BaseTunerLayer, ModulesToSaveWrapper)):
-                module.enable_adapters(enabled)
-
-    def _check_target_module_exists(self, peft_config: SCorDAConfig, key: str) -> bool:
-        return check_target_module_exists(peft_config, key)
-
-    def _create_and_replace(self, scorda_config: SCorDAConfig, adapter_name: str, target: nn.Module, target_name: str, parent: nn.Module, current_key: str) -> None:
-        if current_key is None:
-            raise ValueError("Current Key shouldn't be `None`")
+    def __init__(self, r=8, alpha=16, dropout=0, init_strategy=None, samples=None, target_modules=None, **kwargs):
+        super().__init__(peft_type="scorda", **kwargs)
+        self.r = r
+        self.alpha = alpha
+        self.dropout = dropout
+        self.init_strategy = init_strategy
+        self.samples = samples
+        self.target_modules = target_modules
+    
+    
+    def __post_init__(self):
+        self.peft_type = "SCORDA"
         
-        kwargs = {
-            'r': scorda_config.get('r', None),
-            'orthogonal': scorda_config.orthogonal,
-            'method': scorda_config.method,
-            'alpha': scorda_config.alpha,
-            'init_strategy': scorda_config.init_strategy,
-        }
+
+class SCorDAModel(torch.nn.Module):
+    config_class = SCorDAConfig
+
+    def __init__(self, config, model):
         
-        if isinstance(target, SCorDALinear):
-            raise NotImplementedError()
-        else:
-            new_module = self._create_new_module(scorda_config, adapter_name, target, **kwargs)
-            if adapter_name not in self.active_adapters:
-                new_module.requires_grad_(False)
-            self._replace_module(parent, target_name, new_module, target)
+        super().__init__()
+        # Ensure peft_config is a dict mapping adapter names to configs
+        self.peft_config = config
+        self.model = inject_scorda(model)
+        
+        
+    def forward(self, *args, **kwargs):
+        return self.base_model(*args, **kwargs)
+    
+    @property
+    def modules_to_save(self):
+        return None
 
-    def _replace_module(self, parent, child_name, new_module: SCorDALinear, child):
-        setattr(parent, child_name, new_module)
+    def get_peft_config_as_dict(self, inference: bool = False):
+        config = {k: v.value if isinstance(v, Enum) else v for k, v in asdict(self.peft_config).items()}
+        if inference:
+            config["inference_mode"] = True
+        return config
+        
+# class SCorDAModel(PeftModel):
+#     config_class = SCorDAConfig
 
-    @staticmethod
-    def _create_new_module(scorda_config, adapter_name, target, **kwargs):
-        out_f, in_f = target.weight.shape
-        scorda_linear = SCorDALinear(
-            pre_layer=target,
-            in_features=in_f, out_features=out_f,
-            **kwargs
-        )
-        return scorda_linear
+#     def __init__(self, model, config, adapter_name=None):
+#         print(config)  # For debugging
+#         super().__init__(model, config['default'])
+#         self.model = inject_scorda(config, model)
+        
+#     def forward(self, *args, **kwargs):
+#         return self.model(*args, **kwargs)
 
-    def _mark_only_adapters_as_trainable(self, model: nn.Module):
-        for name, param in model.named_parameters():
-            if self._adapter_name_prefix not in name:
-                param.requires_grad = False
+#     def save_pretrained(self, save_directory):
+#         super().save_pretrained(save_directory)
+
+    # @classmethod
+    # def from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
+    #     config_path = os.path.join(pretrained_model_name_or_path, "config.json")
+    #     config = SCorDAConfig.from_json_file(config_path)
+    #     print(config)
+    #     model = cls(config)
+        
+    #     state_dict = torch.load(os.path.join(pretrained_model_name_or_path, "pytorch_model.bin"))
+    #     model.load_state_dict(state_dict)
+        
+    #     return model
+
+# class SCorDAModel(torch.nn.Module):
+#     def __init__(self, config, model):
+#         super().__init__()
+#         self.peft_config = config
+#         self.model = model
+#         self._find_and_replace()
+#         self.forward = self.model.forward
+
+#     def _find_and_replace(self):
+#         self.model = inject_scorda(self.peft_config, self.model)
+
+#     def _get_submodules(self, key):
+#         parent = self.model.get_submodule(".".join(key.split(".")[:-1]))
+#         target_name = key.split(".")[-1]
+#         target = self.model.get_submodule(key)
+#         return parent, target, target_name
+
+
+#     def __getattr__(self, name: str):
+#         """Forward missing attributes to the wrapped module."""
+#         try:
+#             return super().__getattr__(name)  # defer to nn.Module's logic
+#         except AttributeError:
+#             return getattr(self.model, name)
+
+#     @property
+#     def modules_to_save(self):
+#         return None
+
+#     def get_peft_config_as_dict(self, inference: bool = False):
+#         config = {k: v.value if isinstance(v, Enum) else v for k, v in asdict(self.peft_config).items()}
+#         if inference:
+#             config["inference_mode"] = True
+#         return config
+    
+#     def save_pretrained(self, save_directory):
+#         os.makedirs(save_directory, exist_ok=True)
+        
+#         weights_path = os.path.join(save_directory, "pytorch_model.bin")
+#         torch.save(self.model.state_dict(), weights_path)
+
+#         config_path = os.path.join(save_directory, "config.json")
+#         with open(config_path, "w") as f:
+#             json.dump(self.get_peft_config_as_dict(), f)
+            
+#     @classmethod
+#     def from_pretrained(cls, load_directory, model):
+#         config_path = os.path.join(load_directory, "config.json")
+#         with open(config_path, "r") as f:
+#             config_data = json.load(f)
+
+#         config = SCorDAConfig(**config_data)
+
+#         model_instance = cls(config, model)
+
+#         weights_path = os.path.join(load_directory, "pytorch_model.bin")
+#         model_instance.model.load_state_dict(torch.load(weights_path))
+
+#         return model_instance
