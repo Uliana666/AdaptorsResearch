@@ -51,17 +51,17 @@ def CORDA(W, X, r):
     matrix = torch.nan_to_num(matrix, nan=0.0, posinf=1.0, neginf=-1.0)
         
         
-    # U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
-    # Vt = Vt.T
-    U, S, Vt = torch.linalg.svd(matrix, full_matrices=False)
-    S = torch.sqrt(S)
+    U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
+    Vt = Vt.T
+    # U, S, Vt = torch.linalg.svd(matrix, full_matrices=False)
+    # S = torch.sqrt(S)
         
     A = U[:, :r] @ torch.diag_embed(S[:r])
     
     # C_inv = torch.linalg.inv(C)
     I = torch.eye(C.size(0)).to('cuda')
 
-    C_inv = torch.linalg.lstsq(I, C)
+    C_inv = torch.linalg.lstsq(I, C).solution
     print(C_inv.shape)
 
     B = torch.diag_embed(S[:r]) @ (Vt[:r, :] @ C_inv)
