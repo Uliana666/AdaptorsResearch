@@ -39,7 +39,7 @@ def CORDA_MY(W, X, r):
     X = X.to('cpu')
     return A, B
 
-def CORDA(W, X, r):
+def CORDA_ORIGINAL(W, X, r):
     X = X.to('cuda')
     C = X @ X.T
     C = C.float()
@@ -53,8 +53,7 @@ def CORDA(W, X, r):
         
     U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
     Vt = Vt.T
-    # U, S, Vt = torch.linalg.svd(matrix, full_matrices=False)
-    # S = torch.sqrt(S)
+    S = torch.sqrt(S)
         
     A = U[:, :r] @ torch.diag_embed(S[:r])
     
@@ -69,6 +68,33 @@ def CORDA(W, X, r):
     X = X.to('cpu')
     return A, B
 
+def CORDA(W, X, r):
+    X = X.to('cuda')
+    C = X @ X.T
+    C = C.float()
+    
+    matrix = W @ C
+    if not torch.isfinite(matrix).all():
+        print("Матрица содержит не-конечные значения на следующих индексах:")
+
+    matrix = torch.nan_to_num(matrix, nan=0.0, posinf=1.0, neginf=-1.0)
+        
+        
+    U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
+    Vt = Vt.T
+    
+    A = U[:, :r]
+    B = U[:, :r].T @ W
+    
+    T, S, Vt = torch.linalg.svd(B, full_matrices=False)
+    S = torch.sqrt(S)
+    A = A @ T @ torch.diag_embed(S)
+    B = torch.diag_embed(S) @ Vt
+    
+    X = X.to('cpu')
+    
+    return A, B
+
 def SCORDA(W, X, r):
     X = X.to('cuda')
     print('W, X, r =', W.shape, X.shape, r)
@@ -81,25 +107,18 @@ def SCORDA(W, X, r):
 
     matrix = torch.nan_to_num(matrix, nan=0.0, posinf=1.0, neginf=-1.0)
         
-        
-    # U, S, Vt = torch.linalg.svd(matrix, full_matrices=False)
     U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
     Vt = Vt.T
         
     A = U[:, :r]
-    
-    # B = torch.diag_embed(S[:r]) @ (Vt[:r, :] @ torch.linalg.inv(C))
     B = U[:, :r].T @ W
-    # if X.shape[0] != X.shape[1]:
-    #     T, _, _ = torch.linalg.svd(X.float(), full_matrices=False)
-    #     prev = torch.norm(B)
-    #     B = (U[:, :r].T @ W @ T) @ T.T
-    #     print(prev - torch.norm(B), "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     
-    # print('ready inv')
+    T, S, Vt = torch.linalg.svd(B, full_matrices=False)
+    S = torch.sqrt(S)
+    A = A @ T @ torch.diag_embed(S)
+    B = torch.diag_embed(S) @ Vt
+    
     X = X.to('cpu')
-    # print(W.dtype, X.dtype, C.dtype, A.dtype, B.dtype)
-    # print("AB shape", A.shape, B.shape)
     return A, B
 
 def SVF(W, r):

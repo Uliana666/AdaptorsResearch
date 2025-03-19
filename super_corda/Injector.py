@@ -67,14 +67,10 @@ def process_layer(name, module, scorda_config, logs=None):
         out_features=out_f,
         **kwargs
     )
-    # LOGS
-    A = scorda_layer.adapter.adapter_A
-    B = scorda_layer.adapter.adapter_B
-    
-    logs.setdefault("norms", {})
 
-    logs["norms"][name] = {"A": torch.norm(A).item(), "B": torch.norm(B).item()}
-    # LOGS
+    if logs != None:
+        make_logging(scorda_layer, name, logs)
+        
     return (name, scorda_layer)
 
 
@@ -113,12 +109,12 @@ def prepare_get_samples(model, scorda_config):
 
     return model, hooks
             
+            
 def _calculate(name, dic):
         def hook(model, input):
             X = input[0].cpu()
             print("First shape", X.shape, model.weight.shape)
             X = X.permute(2, 1, 0).reshape(X.shape[2], X.shape[0] * X.shape[1])
-            # X = X.permute(2, 1, 0).reshape(4, 2 * 3)
             prev = dic.get(name)
             if prev != None:
                 dic[name] =  torch.cat((prev, X), dim=1)
@@ -128,7 +124,26 @@ def _calculate(name, dic):
 
         return hook
     
+    
 def after_get_samples(model, scorda_config, hooks):
     for h in hooks:
         h.remove()
+    
+    
+def make_logging(scorda_layer, name, logs):
+    A = scorda_layer.adapter.adapter_A
+    B = scorda_layer.adapter.adapter_B
+    
+    # logs.setdefault("W_s", {})
+    # _, S, _ = torch.linalg.svd(scorda_layer.pre_layer.weight, full_matrices=False)
+    # logs["W_s"][name] = S.tolist()
+    
+    logs.setdefault("norms", {})
+    logs.setdefault("to_orthogonal", {})
+    logs.setdefault("shapes", {})
+
+    logs["norms"][name] = {"A": torch.norm(A).item(), "B": torch.norm(B).item()}
+    logs["shapes"][name] = {"A": A.shape, "B": B.shape}
+    I = torch.eye(A.shape[1]).to('cuda')
+    logs["to_orthogonal"][name] = {"A": torch.dist(A.T @ A, I).item(), "B": torch.dist(B @ B.T, I).item()}
     

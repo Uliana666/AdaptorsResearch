@@ -14,9 +14,10 @@ python3 -u train.py \
     --do_train True \
     --do_eval False \
     --save_strategy "steps" \
-    --save_steps 1000 \
+    --save_steps 500 \
     --save_total_limit 1 \
-    --learning_rate 5e-5 \
+    --learning_rate 1e-4 \
+    --alpha_scorda 12 \
     --weight_decay 0 \
     --warmup_steps 100 \
     --lr_scheduler_type "cosine" \

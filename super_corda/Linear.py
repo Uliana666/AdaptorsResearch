@@ -25,10 +25,10 @@ class SCorDALinear(nn.Module):
 
         self.adapter_A = nn.Parameter(base_tensor.new_empty(base_tensor.shape[1], r, dtype=torch.float32))
         self.adapter_B = nn.Parameter(base_tensor.new_empty(r, base_tensor.shape[0], dtype=torch.float32))
-        self.adapter_v = nn.Parameter(base_tensor.new_empty(RANK, 1, dtype=torch.float32))
+        #  self.adapter_v = nn.Parameter(base_tensor.new_empty(RANK, 1, dtype=torch.float32))
         
-        self.adapter_U = nn.Parameter(base_tensor.new_empty(base_tensor.shape[1], RANK, dtype=torch.float32))
-        self.adapter_Vt = nn.Parameter(base_tensor.new_empty(RANK, base_tensor.shape[0], dtype=torch.float32))
+        # self.adapter_U = nn.Parameter(base_tensor.new_empty(base_tensor.shape[1], RANK, dtype=torch.float32))
+        # self.adapter_Vt = nn.Parameter(base_tensor.new_empty(RANK, base_tensor.shape[0], dtype=torch.float32))
 
 
         self.r = r
@@ -78,26 +78,26 @@ class SCorDALinear(nn.Module):
             self.adapter_A.copy_(A.T)
             self.adapter_B.copy_(B.T)
             
-        elif self.init_strategy == "scorda_svf":
-            # B, A = Compressors.SCORDA(base_tensor, self.X, self.r)
-            self.X = self.X.to('cpu')
-            del self.X
-            torch.nn.init.zeros_(self.adapter_B)
-            torch.nn.init.normal_(self.adapter_A, mean=0.0, std=1.0)
+        # elif self.init_strategy == "scorda_svf":
+        #     # B, A = Compressors.SCORDA(base_tensor, self.X, self.r)
+        #     self.X = self.X.to('cpu')
+        #     del self.X
+        #     torch.nn.init.zeros_(self.adapter_B)
+        #     torch.nn.init.normal_(self.adapter_A, mean=0.0, std=1.0)
             
-            # self.adapter_v.fill_(0)
-            self.adapter_v.fill_(1)
-            with torch.no_grad():
-                U, S, Vt = Compressors.SVF(base_tensor, RANK)
+        #     # self.adapter_v.fill_(0)
+        #     self.adapter_v.fill_(1)
+        #     with torch.no_grad():
+        #         U, S, Vt = Compressors.SVF(base_tensor, RANK)
             
-            print(U.shape, S.shape, Vt.shape, "meow")
-            print(self.adapter_Vt.shape, self.adapter_U.shape)
-            print((U @ torch.diag_embed(S)).shape)
-            self.adapter_Vt.copy_((U @ torch.diag_embed(S)).T)
-            self.adapter_U.copy_(Vt.T)
+        #     print(U.shape, S.shape, Vt.shape, "meow")
+        #     print(self.adapter_Vt.shape, self.adapter_U.shape)
+        #     print((U @ torch.diag_embed(S)).shape)
+        #     self.adapter_Vt.copy_((U @ torch.diag_embed(S)).T)
+        #     self.adapter_U.copy_(Vt.T)
             
-            self.adapter_Vt.requires_grad = False
-            self.adapter_U.requires_grad = False
+        #     self.adapter_Vt.requires_grad = False
+        #     self.adapter_U.requires_grad = False
             
             
         else:
@@ -111,7 +111,7 @@ class SCorDALinear(nn.Module):
     
     def forward(self, X):
         # return torch.matmul(x, torch.matmul(self.adapter_A, self.adapter_B))
-        Y = X @ self.adapter_A @ self.adapter_B
+        Y = X @ (self.adapter_A @ self.adapter_B)
         if self.init_strategy == "scorda_svf":
             Y += X @ (self.adapter_U @ torch.diag_embed(self.adapter_v[:, 0]) @ self.adapter_Vt)
         return Y
@@ -126,6 +126,3 @@ class SCorDALinear(nn.Module):
             f")"
         )
         return repr_str
-
-    # def __repr__(self):
-    #     return f"SCorDA(r={self.r}, init_strategy={self.init_strategy})"

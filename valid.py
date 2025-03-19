@@ -23,7 +23,21 @@ from evaluate import load
 
 @dataclass
 class InferenceArguments(transformers.TrainingArguments):
-    model_name_or_path: Optional[str] = field(default="facebook/opt-125m")
+    path: Optional[str] = field(default="facebook/opt-125m")
+    
+    name: Optional[str] = field(default="facebook/opt-125m")
+    
+    mode: Literal["lora", "pissa", "scorda"] = field(
+        default="lora", metadata={"help": "Use type of adaptor: lora, pissa, scorda"}
+    )
+    
+    init_strategy: Literal["lora", "pissa", "corda", "scorda"] = field(
+        default="lora", metadata={"help": "Use type of adaptor: lora, pissa, scorda"}
+    )
+    
+    alpha_scorda: int = field(default=8)
+    
+    samples: str = field(default=None)
         
     seed_of_gen: int = field(default=42, metadata={"help": "seed for generation dataset"})
     
@@ -34,6 +48,8 @@ class InferenceArguments(transformers.TrainingArguments):
     model_max_length: int = field(default=2048, metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},)
     
     name_dataset: str = field(default="common-reasoning", metadata={"help": "Chose: BoolQ, PIQA, SIQA, hellaswag, winogrande, ARC-E, ARC-C, OBQA"})
+    
+    rank: int = field(default=None, metadata={"help": "The rank of adapter."})
 
     
     
@@ -65,27 +81,17 @@ def valid():
     parser = transformers.HfArgumentParser(InferenceArguments)
     script_args = parser.parse_args_into_dataclasses()[0]
     
-    model, tokenizer = Models.LoadLLM(script_args.model_name_or_path)
+    model, tokenizer = Models.LoadFineTuneLLM(script_args)
+
+    print('MODEL READY')
+    
+    print(model)
 
     common_reasoning = Datasets.LoadCommonReasoning('validation', script_args.count_examples, 
                                                     script_args.name_dataset, script_args.seed_of_gen)
     
-    dataset = common_reasoning['dataset'].map(
-        Globals._tokenize_,
-        batched=True,
-        remove_columns=common_reasoning['dataset'].column_names,
-        desc="Running tokenizer on dataset",
-        fn_kwargs={"tokenizer": tokenizer, 
-                "max_length": script_args.model_max_length, 
-                "name_text": common_reasoning['name_text']},
-        load_from_cache_file=False,
-    )
-    
-    data_collator = Globals.DataCollatorForChat(
-        tokenizer=tokenizer,
-        mlm=False,
-        start_token=script_args.start_token
-    )
+    dataset, data_collator = Datasets.PrepareDataset(**common_reasoning, args=script_args, 
+                                                    tokenizer=tokenizer, desc="train")
 
 
     trainer = Trainer(

@@ -6,3 +6,4 @@ datasets/*
 datasets/*/
 results/
 test_/
+tmp_trainer/

@@ -27,6 +27,9 @@ class CalcArguments(transformers.TrainingArguments):
     
     init_strategy: str = field(default="lora")
     samples: str = field(default=None)
+    
+    alpha_scorda: int = field(default=None)
+
 
 def calc():
     parser = transformers.HfArgumentParser(CalcArguments)

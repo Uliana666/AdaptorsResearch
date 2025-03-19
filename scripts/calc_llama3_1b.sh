@@ -15,3 +15,4 @@ python3 -u calc_metrics.py \
     --init_strategy $INIT \
     --report_to "tensorboard" \
     --samples "samples_dataset" \
+    --alpha_scorda 16 \

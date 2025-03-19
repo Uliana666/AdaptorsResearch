@@ -2,6 +2,7 @@ BASE_MODEL="meta-llama/Llama-3.2-1B-Instruct"
 OUTPUT_MODEL=$1
 MODE=$2
 INIT=$3
+DIR=$4
 
 python3 -u train.py \
     --model_name_or_path $BASE_MODEL \
@@ -16,7 +17,8 @@ python3 -u train.py \
     --save_strategy "steps" \
     --save_steps 300 \
     --save_total_limit 1 \
-    --learning_rate 1e-5 \
+    --learning_rate 1e-4 \
+    --alpha_scorda 16 \
     --weight_decay 0 \
     --warmup_steps 100 \
     --lr_scheduler_type "cosine" \
@@ -24,8 +26,10 @@ python3 -u train.py \
     --fp16 True \
     --optim "adamw_torch" \
     --report_to "tensorboard" \
-    --count_examples 4000 \
+    --count_examples 40 \
     --start_token 374 \
     --model_max_length 1024 \
     --mode $MODE \
     --init_strategy $INIT \
+    --logging_path $DIR \
+    --samples "samples_dataset" \

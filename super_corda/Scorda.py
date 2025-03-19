@@ -42,14 +42,9 @@ class SCorDALayer(nn.Module, BaseTunerLayer):
         if not self._enabled:
             return self.pre_layer(x)
         
-        
-        # print(x.shape)
         x_1 = F.linear(x, self.pre_layer.weight)
-        # print("-------------- OKOKOKOKK")
         x_2 = self.alpha * self.adapter(x)
-        # print("--------------- MEOWMEOWMEOW")
         x = x_1 + x_2
-        # print(x.shape)
 
         return x
 
