@@ -1,24 +1,11 @@
-import copy
-import os
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Sequence, List, Literal
-from lib import Globals, Models, Datasets
-import torch
+from typing import Optional
+from lib import Models, Datasets
 import transformers
 from transformers import Trainer
-from datasets import load_dataset
-from peft import LoraConfig, get_peft_model, PeftModel
 import numpy as np
-import tqdm
-import torch
-import torch
-from lib import Globals
-from datasets import load_dataset
-from torch.utils.data import DataLoader, Dataset
-from transformers import TextDataset, DataCollatorForLanguageModeling
-import tqdm
-from transformers import Trainer, TrainingArguments, DataCollatorForSeq2Seq, DataCollatorForLanguageModeling, default_data_collator
-from evaluate import load
+from transformers import Trainer
+from omegaconf import OmegaConf
 
 
 @dataclass
@@ -26,18 +13,6 @@ class InferenceArguments(transformers.TrainingArguments):
     path: Optional[str] = field(default="facebook/opt-125m")
     
     name: Optional[str] = field(default="facebook/opt-125m")
-    
-    mode: Literal["lora", "pissa", "scorda"] = field(
-        default="lora", metadata={"help": "Use type of adaptor: lora, pissa, scorda"}
-    )
-    
-    init_strategy: Literal["lora", "pissa", "corda", "scorda"] = field(
-        default="lora", metadata={"help": "Use type of adaptor: lora, pissa, scorda"}
-    )
-    
-    alpha_scorda: int = field(default=8)
-    
-    samples: str = field(default=None)
         
     seed_of_gen: int = field(default=42, metadata={"help": "seed for generation dataset"})
     
@@ -49,7 +24,7 @@ class InferenceArguments(transformers.TrainingArguments):
     
     name_dataset: str = field(default="common-reasoning", metadata={"help": "Chose: BoolQ, PIQA, SIQA, hellaswag, winogrande, ARC-E, ARC-C, OBQA"})
     
-    rank: int = field(default=None, metadata={"help": "The rank of adapter."})
+    config_path: str = field(default=None)
 
     
     
@@ -72,19 +47,15 @@ def compute_metrics(eval_pred):
     return sm
 
 
-def preprocess_logits_for_metrics(logits, labels):
-    pred_ids = torch.stack([torch.argmax(logit, dim=-1) for logit in logits])
-    return pred_ids, labels
-
-
 def valid():
     parser = transformers.HfArgumentParser(InferenceArguments)
     script_args = parser.parse_args_into_dataclasses()[0]
-    
-    model, tokenizer = Models.LoadFineTuneLLM(script_args)
+    adaptor_config = OmegaConf.load(script_args.config_path)
+
+    model, tokenizer = Models.LoadFineTuneLLM(adaptor_config, script_args)
 
     print('MODEL READY')
-    
+        
     print(model)
 
     common_reasoning = Datasets.LoadCommonReasoning('validation', script_args.count_examples, 
@@ -101,7 +72,7 @@ def valid():
         eval_dataset=dataset,
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
-        preprocess_logits_for_metrics=preprocess_logits_for_metrics
+        preprocess_logits_for_metrics=Datasets.preprocess_logits_for_metrics
     )
     eval_results = trainer.evaluate()
     print(eval_results)

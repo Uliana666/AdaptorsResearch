@@ -8,10 +8,6 @@ import reprlib
 
 from lib import Compressors
 
-RANK = 128
-
-
-
 class SCorDALinear(nn.Module):
     def __init__(self, 
                 r: int, 
@@ -41,40 +37,23 @@ class SCorDALinear(nn.Module):
     def reset_parameters(self, base_tensor):
         if self.init_strategy == "lora":
             torch.nn.init.zeros_(self.adapter_B)
-            torch.nn.init.normal_(self.adapter_A, mean=0.0, std=1.0)
+            # torch.nn.init.normal_(self.adapter_A, mean=0.0, std=1.0)
+            torch.nn.init.kaiming_uniform_(self.adapter_A, a=math.sqrt(5))
             
         elif self.init_strategy == "pissa":
             U, VT = Compressors.PISSA(base_tensor, self.r)
-            
             self.adapter_A.copy_(VT.T)
             self.adapter_B.copy_(U.T)
             
         elif self.init_strategy == "corda":
-            B, A = Compressors.CORDA(base_tensor, self.X, self.r)
-            # print("SET LAYER", B.shape, A.shape)
-            # print("SET LAYER--", self.adapter_A.shape, self.adapter_B.shape)
+            B, A = Compressors.CORDA_ORIGINAL(base_tensor, self.X, self.r)
             del self.X
-            if not torch.isfinite(A).all():
-                print("Матрица содержит не-конечные значения на следующих индексах:")
-            if not torch.isfinite(B).all():
-                print("Матрица содержит не-конечные значения на следующих индексах:")
-                
-            print(torch.linalg.norm(A), torch.linalg.norm(B))
-            
             self.adapter_A.copy_(A.T)
             self.adapter_B.copy_(B.T)
+            
         elif self.init_strategy == "scorda":
             B, A = Compressors.SCORDA(base_tensor, self.X, self.r)
-            # print("SET LAYER", B.shape, A.shape)
-            # print("SET LAYER--", self.adapter_A.shape, self.adapter_B.shape)
             del self.X
-            if not torch.isfinite(A).all():
-                print("Матрица содержит не-конечные значения на следующих индексах:")
-            if not torch.isfinite(B).all():
-                print("Матрица содержит не-конечные значения на следующих индексах:")
-                
-            print(torch.linalg.norm(A), torch.linalg.norm(B))
-            
             self.adapter_A.copy_(A.T)
             self.adapter_B.copy_(B.T)
             
@@ -110,7 +89,6 @@ class SCorDALinear(nn.Module):
 
     
     def forward(self, X):
-        # return torch.matmul(x, torch.matmul(self.adapter_A, self.adapter_B))
         Y = X @ (self.adapter_A @ self.adapter_B)
         if self.init_strategy == "scorda_svf":
             Y += X @ (self.adapter_U @ torch.diag_embed(self.adapter_v[:, 0]) @ self.adapter_Vt)

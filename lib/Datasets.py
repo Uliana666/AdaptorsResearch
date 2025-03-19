@@ -1,7 +1,36 @@
-from datasets import load_dataset, Dataset, DatasetDict
-from torch.utils.data import DataLoader
-from lib import Globals
-import datasets
+from datasets import load_dataset
+from transformers import DataCollatorForLanguageModeling
+import torch
+
+
+def _tokenize_(example, name_text, tokenizer, max_length):
+    
+    t =  tokenizer(
+        example[name_text],
+        truncation=True,
+        max_length=max_length,
+        padding="max_length",
+        return_tensors="pt"
+    )
+    
+    return t
+    
+class DataCollatorForChat(DataCollatorForLanguageModeling):
+    def __init__(self, tokenizer, mlm=False, mlm_probability=0.15, start_token=-1):
+        super().__init__(tokenizer=tokenizer, mlm=mlm, mlm_probability=mlm_probability)
+        self.start_token = start_token
+
+    def torch_call(self, examples):
+        batch = super().torch_call(examples)
+        
+        labels = batch["labels"]
+        for i in range(labels.size(0)):
+            special_token_indices = (labels[i] == self.start_token).nonzero(as_tuple=True)[0]
+            if len(special_token_indices) > 0:
+                start = special_token_indices[-1].item()
+                labels[i, :start + 1] = -100
+        
+        return batch
 
 def LoadCommonReasoning(type, count, name="common-reasoning", seed=42):
     print("Load", name)
@@ -17,7 +46,7 @@ def LoadCommonReasoning(type, count, name="common-reasoning", seed=42):
 
 def PrepareDataset(dataset, name_text, args, tokenizer, desc=""):
     dataset = dataset.map(
-        Globals._tokenize_,
+        _tokenize_,
         batched=True,
         remove_columns=dataset.column_names,
         desc=f"Running tokenizer on dataset ({desc})",
@@ -28,10 +57,15 @@ def PrepareDataset(dataset, name_text, args, tokenizer, desc=""):
     )
     
     
-    data_collator = Globals.DataCollatorForChat(
+    data_collator = DataCollatorForChat(
         tokenizer=tokenizer,
         mlm=False,
         start_token=args.start_token
     )
     
     return dataset, data_collator
+
+
+def preprocess_logits_for_metrics(logits, labels):
+    pred_ids = torch.stack([torch.argmax(logit, dim=-1) for logit in logits])
+    return pred_ids, labels

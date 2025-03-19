@@ -1,12 +1,11 @@
 import copy
 import os
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Sequence, List, Literal
-from archive import Train
-from lib import Globals, Models, Datasets
+from typing import Optional
+from lib import Models, Datasets
 import torch
 import transformers
-import wandb
+from omegaconf import OmegaConf
 from transformers import Trainer
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model, PeftModel
@@ -44,18 +43,8 @@ class TrainingArguments(transformers.TrainingArguments):
     start_token: int = field(default=10000, metadata={"help":"Token after which the model should learn to generate"})
     
     model_max_length: int = field(default=2048, metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},)
-    rank: int = field(default=None, metadata={"help": "The rank of adapter."})
     
-    mode: Literal["lora", "pissa", "scorda"] = field(
-        default="lora", metadata={"help": "Use type of adaptor: lora, pissa, scorda"}
-    )
-    
-    init_strategy: Literal["lora", "pissa", "corda", "scorda"] = field(
-        default="lora", metadata={"help": "Use type of adaptor: lora, pissa, scorda"}
-    )
-    samples: str = field(default=None)
-    
-    alpha_scorda: int = field(default=None)
+    config_path: str = field(default=None)
 
 def train():
     parser = transformers.HfArgumentParser(TrainingArguments)
@@ -65,7 +54,9 @@ def train():
 
     common_reasoning = Datasets.LoadCommonReasoning('train', script_args.count_examples, seed=script_args.seed_of_gen)
     
-    model = Models.PrepareModel(model, script_args, tokenizer)
+    adaptor_config = OmegaConf.load(script_args.config_path)
+    
+    model = Models.PrepareModel(model, adaptor_config, script_args, tokenizer)
         
     dataset, data_collator = Datasets.PrepareDataset(**common_reasoning, args=script_args, 
                                                     tokenizer=tokenizer, desc="train")

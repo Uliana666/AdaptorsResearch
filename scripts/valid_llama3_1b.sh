@@ -1,7 +1,8 @@
 MODEL_NAME="meta-llama/Llama-3.2-1B-Instruct"
 MODEL_PATH=$1
-DATASET=$2
-OUTPUT_DIR=$3
+CONFIG_PATH=$2
+DATASET=$3
+OUTPUT_DIR=$4
 
 python3 -u valid.py \
     --path $MODEL_PATH \
@@ -17,7 +18,5 @@ python3 -u valid.py \
     --start_token 374 \
     --model_max_length 1024 \
     --name_dataset $DATASET \
-    --rank 8 \
-    --mode "scorda" \
-    --init_strategy "lora" \
     --count_examples 50 \
+    --config_path $CONFIG_PATH \

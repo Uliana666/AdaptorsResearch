@@ -1,16 +1,8 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
-
-from peft.tuners.tuners_utils import BaseTuner, BaseTunerLayer, check_target_module_exists, onload_layer
-from peft.utils import _get_submodules
-
-import collections
+from peft.tuners.tuners_utils import check_target_module_exists
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from lib import Datasets, Globals
-import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
-
 
 from super_corda.Scorda import SCorDALayer
 
@@ -23,20 +15,18 @@ def get_layer(model, name):
 
 
 def set_layer(model, name, layer):
-    try:
-        attrs, name = name.rsplit(".", 1)
-        model = get_layer(model, attrs)
-    except ValueError:
-        print("Loose")
-        pass
+    attrs, name = name.rsplit(".", 1)
+    model = get_layer(model, attrs)
     setattr(model, name, layer)
 
 
 def _get_total_parameters(model):
     return sum(p.numel() for p in model.parameters())
 
+
 def _get_trainable_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 
 def print_num_trainable(model):
     total_params = _get_total_parameters(model)
@@ -113,7 +103,6 @@ def prepare_get_samples(model, scorda_config):
 def _calculate(name, dic):
         def hook(model, input):
             X = input[0].cpu()
-            print("First shape", X.shape, model.weight.shape)
             X = X.permute(2, 1, 0).reshape(X.shape[2], X.shape[0] * X.shape[1])
             prev = dic.get(name)
             if prev != None:

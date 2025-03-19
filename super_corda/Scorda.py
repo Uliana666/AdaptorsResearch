@@ -30,7 +30,6 @@ class SCorDALayer(nn.Module, BaseTunerLayer):
         base_tensor = pre_layer.weight
         self.adapter = Linear.SCorDALinear(r, init_strategy=init_strategy, base_tensor=base_tensor, X=X)
         with torch.no_grad():
-            # print(self.pre_layer.weight.shape, self.adapter.get_value().shape)
             self.pre_layer.weight -= self.alpha * self.adapter.get_value()
 
         self._enabled = True
@@ -47,30 +46,3 @@ class SCorDALayer(nn.Module, BaseTunerLayer):
         x = x_1 + x_2
 
         return x
-
-    # def merge(self) -> nn.Linear:
-    #     """
-    #     merge may destruct GSOFTLinear structure. Do not use this layer after merging 
-    #     """
-    #     in_shape, out_shape = self.in_features, self.out_features
-    #     W_0: torch.Tensor = self.pre_layer.weight.data
-
-    #     if self.use_bias:
-    #         raise NotImplementedError
-
-    #     if self.is_left:
-    #         I = torch.eye(in_shape, dtype=torch.float32, device=W_0.device)
-    #         Q = self.gs_ort(I).to(dtype=W_0.dtype).transpose(0, 1)
-    #         W = torch.mm(W_0, Q)
-    #     else:
-    #         I = torch.eye(out_shape, dtype=torch.float32, device=W_0.device)
-    #         Q = self.gs_ort(I).to(dtype=W_0.dtype).transpose(0, 1) 
-    #         W = torch.mm(Q, W_0)
-        
-    #     if self.scale:
-    #         W.mul_(self.gsoft_s.unsqueeze(1))
-        
-    #     self.pre_layer.weight.data = W
-    #     del W_0
-
-    #     return self.pre_layer

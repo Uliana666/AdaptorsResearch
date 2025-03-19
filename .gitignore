@@ -1,9 +1,7 @@
 workout/
-logs/
 wandb/
 datasets/*
 !datasets/*
 datasets/*/
 results/
 test_/
-tmp_trainer/
