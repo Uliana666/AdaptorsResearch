@@ -17,7 +17,7 @@ class SCorDAConfig:
     
     
 def get_peft_model(model, config, args=None, tokenizer=None, logs=None):
-    if config.init_strategy in  ["corda", "scorda"]:
+    if config.init_strategy in  ["corda", "scorda", "scorda_svf"]:
         model, hooks = prepare_get_samples(model, config)
         data = Datasets.LoadCommonReasoning('train', None, config.samples)
     

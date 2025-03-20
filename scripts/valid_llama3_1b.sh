@@ -18,5 +18,4 @@ python3 -u valid.py \
     --start_token 374 \
     --model_max_length 1024 \
     --name_dataset $DATASET \
-    --count_examples 50 \
     --config_path $CONFIG_PATH \

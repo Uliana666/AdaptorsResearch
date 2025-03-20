@@ -1,4 +1,4 @@
-BASE_MODEL="meta-llama/Llama-3.2-1B-Instruct"
+BASE_MODEL="meta-llama/Llama-3.2-3B-Instruct"
 OUTPUT_MODEL=$1
 CONFIG_PATH=$2
 
