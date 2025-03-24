@@ -1,8 +1,8 @@
-BASE_MODEL="meta-llama/Llama-3.2-3B-Instruct"
+BASE_MODEL="meta-llama/Llama-3.2-1B-Instruct"
 OUTPUT_MODEL=$1
 CONFIG_PATH=$2
 
-python3 -u train.py \
+python3 -u train_math.py \
     --model_name_or_path $BASE_MODEL \
     --output_dir $OUTPUT_MODEL \
     --num_train_epochs 1 \
@@ -23,6 +23,6 @@ python3 -u train.py \
     --optim "adamw_torch" \
     --report_to "wandb" \
     --count_examples 400 \
-    --start_token 374 \
+    --start_token 128007 \
     --model_max_length 1024 \
     --config_path $CONFIG_PATH \

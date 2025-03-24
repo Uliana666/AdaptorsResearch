@@ -52,7 +52,7 @@ def valid():
     script_args = parser.parse_args_into_dataclasses()[0]
     adaptor_config = OmegaConf.load(script_args.config_path)
 
-    model, tokenizer = Models.LoadFineTuneLLM(adaptor_config, script_args)
+    model, tokenizer = Models.LoadFineTuneLLM(adaptor_config, script_args.name, script_args.path)
 
     print('MODEL READY')
         
@@ -74,6 +74,7 @@ def valid():
         compute_metrics=compute_metrics,
         preprocess_logits_for_metrics=Datasets.preprocess_logits_for_metrics
     )
+    
     eval_results = trainer.evaluate()
     print(eval_results)
 
