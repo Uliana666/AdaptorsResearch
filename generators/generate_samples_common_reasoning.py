@@ -1,7 +1,6 @@
 import argparse
 from lib import Datasets
 from datasets import Dataset, DatasetDict
-import datasets
 
 
 def create_dataset(dataset_names, num_examples, data_split="train", seed=42):

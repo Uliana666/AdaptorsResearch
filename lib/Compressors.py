@@ -87,12 +87,24 @@ def COTAN(W, X, r):
 def COTAN_HALF(W, X, r):
     X = X.to(W.device).float()
     print(X.shape)
-    _, R = torch.linalg.qr(X.T)
-    X = R.T
+    S, U = torch.linalg.eigh(X @ X.T)
+    print(S)
+    if not torch.isfinite(S).all():
+        print("BAD S")
+    if not torch.isfinite(U).all():
+        print("BAD U")
+    S[S < 0] = 0
+    S = torch.sqrt(torch.sqrt(S))
+    if not torch.isfinite(S).all():
+        print("BAD SSSS")
+    print(S)
     
-    matrix = W.float() @ X.float()
+    matrix = W.float() @ U @ torch.diag_embed(S)
     matrix = matrix.float()
+    if not torch.isfinite(matrix).all():
+        print("BAD matrix")
             
+    print(matrix)
     U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
     Vt = Vt.T
         
