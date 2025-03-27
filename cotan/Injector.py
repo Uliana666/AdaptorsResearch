@@ -52,8 +52,8 @@ def process_layer(name, module, cotan_config, logs=None):
         'X': cotan_config.dic[name] if hasattr(cotan_config, 'dic') else None,
     }
     
-    if logs != None:
-        make_logging_prev(cotan_config, name, logs)
+    # if logs != None:
+    #     make_logging_prev(cotan_config, name, logs)
 
     cotan_layer = CoTAnLayer(
         module,
@@ -62,8 +62,8 @@ def process_layer(name, module, cotan_config, logs=None):
         **kwargs
     )
 
-    # if logs != None:
-    #     make_logging(cotan_layer, name, logs)
+    if logs != None:
+        make_logging(cotan_layer, name, logs)
         
     return (name, cotan_layer)
 
@@ -144,6 +144,6 @@ def make_logging(cotan_layer, name, logs):
 def make_logging_prev(cotan_config, name, logs):
     
     logs.setdefault("X", {})
-
+    print('MEOW')
     logs["X"][name] = cotan_config.dic[name]
     

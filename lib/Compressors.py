@@ -19,24 +19,28 @@ def CORDA_ORIGINAL(W, X, r):
     
     matrix = W @ C
     if not torch.isfinite(matrix).all():
-        print("Матрица содержит не-конечные значения на следующих индексах:")
+        print("Матрица содержит не-конечные значения")
 
     matrix = torch.nan_to_num(matrix, nan=0.0, posinf=1.0, neginf=-1.0)
         
         
     U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
     Vt = Vt.T
-    S = torch.sqrt(S)
         
-    A = U[:, :r] @ torch.diag_embed(S[:r])
+    A = U[:, :r]
     
-    C_inv = torch.linalg.inv(C)
+    # C_inv = torch.linalg.inv(C)
     
     I = torch.eye(C.size(0)).to(W.device)
-    # C_inv = torch.linalg.lstsq(I, C).solution
+    C_inv = torch.linalg.lstsq(C, I).solution
+    C_inv = torch.nan_to_num(C_inv, nan=0.0, posinf=1.0, neginf=-1.0)
 
     B = torch.diag_embed(S[:r]) @ (Vt[:r, :] @ C_inv)
-    # B = torch.diag_embed(1 / S[:r]) @ (U.T[:r, :] @ W)
+    
+    U, S, VT = torch.linalg.svd(B, full_matrices=False)
+    A = A @ U @ torch.diag_embed(torch.sqrt(S))
+    B = torch.diag_embed(torch.sqrt(S)) @ VT
+    
     X = X.to('cpu')
     return A, B
 
@@ -84,27 +88,30 @@ def COTAN(W, X, r):
     X = X.to('cpu')
     return A, B
 
+def COTAN_BAD(W, X, r):
+    X = X.to(W.device).float()
+    C = X @ X.T
+    eps = 1e-2
+    I_eps = eps * torch.eye(C.shape[0]).to(C.device)
+    L = torch.linalg.cholesky(C + I_eps)
+    
+    matrix = (W.float() @ L).float()            
+    U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
+    Vt = Vt.T
+        
+    A = U[:, :r]
+    B = torch.diag_embed(S[:r]) @ Vt[:r, :] @ torch.linalg.inv(L)
+    
+    X = X.to('cpu')
+    return A, B
+
 def COTAN_HALF(W, X, r):
     X = X.to(W.device).float()
-    print(X.shape)
     S, U = torch.linalg.eigh(X @ X.T)
-    print(S)
-    if not torch.isfinite(S).all():
-        print("BAD S")
-    if not torch.isfinite(U).all():
-        print("BAD U")
     S[S < 0] = 0
     S = torch.sqrt(torch.sqrt(S))
-    if not torch.isfinite(S).all():
-        print("BAD SSSS")
-    print(S)
-    
     matrix = W.float() @ U @ torch.diag_embed(S)
     matrix = matrix.float()
-    if not torch.isfinite(matrix).all():
-        print("BAD matrix")
-            
-    print(matrix)
     U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
     Vt = Vt.T
         
