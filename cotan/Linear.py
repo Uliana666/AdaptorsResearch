@@ -48,7 +48,7 @@ class CoTAnLinear(nn.Module):
             self.adapter_B.copy_(U.T)
             
         elif self.init_strategy == "corda":
-            B, A = Compressors.CORDA_ORIGINAL(base_tensor, self.X, self.r)
+            B, A = Compressors.CORDA_ORIGINAL_STABLE(base_tensor, self.X, self.r)
             del self.X
             self.adapter_A.copy_(A.T)
             self.adapter_B.copy_(B.T)

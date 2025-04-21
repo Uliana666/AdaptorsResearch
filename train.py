@@ -89,7 +89,7 @@ def train():
             train_dataset=dataset,
             tokenizer=tokenizer,
         )
-    
+        # with torch.autograd.detect_anomaly():
         trainer.train()
         trainer.save_state()
         model.save_pretrained(os.path.join(script_args.output_dir,'ft'), max_shard_size='2GB')

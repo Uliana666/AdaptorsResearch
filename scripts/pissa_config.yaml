@@ -1,4 +1,0 @@
-r: 8
-alpha: 16
-target_modules: ['q_proj', 'k_proj', 'v_proj', 'o_proj', 'up_proj', 'down_proj']
-init_strategy: "pissa"

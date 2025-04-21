@@ -1,5 +1,9 @@
 # AdaptorsResearch
 
+В данной работе предоставлена более устойчивая реализация методов низкоранговой инициалзации. А также, предоставлена реализация метода CoTAn и использование его для дообучения LLaMA.
+
+![](./CoTAn.png)
+
 ## Generation dataset
 
 Первое, что вам нужно сделать после клонирования репозитория, это скачать (локально) все датасеты:
@@ -35,3 +39,4 @@ name_dataset нужно выбраз из: "common-reasoning", "BoolQ", "PIQA", 
 ```bash
 ./scripts/calc_llama3_1b.sh ./path_so_save/file.pkl ./scripts/{name_of_initialization}_config.yaml 
 ```
+

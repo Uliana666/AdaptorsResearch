@@ -12,35 +12,36 @@ def PISSA(W, r):
     
     return U_mod, V_mod
 
-def CORDA_ORIGINAL(W, X, r):
+
+def CORDA_ORIGINAL_STABLE(W, X, r):
     X = X.to(W.device)
     C = X @ X.T
     C = C.float()
+    C += torch.eye(C.shape[0]).to(C.device) * 1e-1
+    C = torch.nan_to_num(C, nan=0.0, posinf=1.0, neginf=-1.0)
     
     matrix = W @ C
     if not torch.isfinite(matrix).all():
-        print("Матрица содержит не-конечные значения")
-
-    matrix = torch.nan_to_num(matrix, nan=0.0, posinf=1.0, neginf=-1.0)
-        
+        print("matrix lose")
+        matrix = torch.nan_to_num(matrix, nan=0.0, posinf=1.0, neginf=-1.0)
         
     U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
+    S = torch.sqrt(S)
     Vt = Vt.T
         
-    A = U[:, :r]
+    A = U[:, :r] @ torch.diag_embed(S[:r])
     
     # C_inv = torch.linalg.inv(C)
     
-    I = torch.eye(C.size(0)).to(W.device)
-    C_inv = torch.linalg.lstsq(C, I).solution
-    C_inv = torch.nan_to_num(C_inv, nan=0.0, posinf=1.0, neginf=-1.0)
+    # I = torch.eye(C.size(0)).to(W.device)
+    # C_inv = torch.linalg.lstsq(C, I).solution
+    
+    B = torch.linalg.lstsq(C.T, (torch.diag_embed(S[:r]) @ Vt[:r, :]).T).solution.T
+    # T, S, Vt = torch.linalg.svd(B, full_matrices=False)
+    # S = torch.sqrt(S)
+    # A = A @ T @ torch.diag_embed(S)
+    # B = torch.diag_embed(S) @ Vt
 
-    B = torch.diag_embed(S[:r]) @ (Vt[:r, :] @ C_inv)
-    
-    U, S, VT = torch.linalg.svd(B, full_matrices=False)
-    A = A @ U @ torch.diag_embed(torch.sqrt(S))
-    B = torch.diag_embed(torch.sqrt(S)) @ VT
-    
     X = X.to('cpu')
     return A, B
 
@@ -66,6 +67,30 @@ def CORDA(W, X, r):
     
     X = X.to('cpu')
     
+    return A, B
+
+def CORDA_ORIGINAL(W, X, r):
+    X = X.to(W.device)
+    C = X @ X.T
+    C = C.float()
+    C = torch.nan_to_num(C, nan=0.0, posinf=1.0, neginf=-1.0)
+    
+    matrix = W @ C
+    if not torch.isfinite(matrix).all():
+        print("matrix lose")
+        matrix = torch.nan_to_num(matrix, nan=0.0, posinf=1.0, neginf=-1.0)
+        
+    U, S, Vt = torch.svd_lowrank(matrix, q=r + 8, niter=10)
+    S = torch.sqrt(S)
+    Vt = Vt.T
+        
+    A = U[:, :r] @ torch.diag_embed(S[:r])
+    
+    C_inv = torch.linalg.inv(C)
+    B =  (torch.diag_embed(S[:r]) @ Vt[:r, :]) @ C_inv
+    
+
+    X = X.to('cpu')
     return A, B
 
 def COTAN(W, X, r):
