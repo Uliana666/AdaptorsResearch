@@ -5,3 +5,4 @@ datasets/*
 datasets/*/
 results/
 test_/
+.vscode/
